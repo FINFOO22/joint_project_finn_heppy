@@ -2,17 +2,15 @@
 
 # 01082025 - testing OpenF1 API
 # So here this project requires access to the speeds, obtaining the average from the ##top three speeds## (p1, p2, p3) of the track from the ##past two years##
-
+from datetime import datetime
 from urllib.request import urlopen
 import json
 
-response = urlopen('https://api.openf1.org/v1/session_result?session_key=latest')
-data = json.loads(response.read().decode('utf-8'))
-print(data)
+#response = urlopen('https://api.openf1.org/v1/session_result?session_key=latest')
+#data = json.loads(response.read().decode('utf-8'))
+#print(data)
 
-# Mind map - session_key 
 
-# firstly we need session_result API inquiry --> 
 
 
 # firstly we need the meetings API (give us the country_name, meeting_name, location (which can be used for OPEN METEO), and meeting_key (can be used to find NEXT block of information) AND number_of_laps (use on the laps API)
@@ -31,15 +29,16 @@ print(data)
 # meeting_key = this is a chronological unique identifier for this meeting (specific to that individual grand prix but NOT specific to the session (Qual, Sprint, or Race etc.))
 # number_of_laps = total number of laps completed (should be equal for racers (in a RACE) unless they dnf)
 
+# SESSION API:
+# session_key = unique identifier that is specific to the session itself not just the meeting 
+# session_name = specifiy 'Race' in the API call to obtain the session_key of that RACE
+
 # SESSION_RESULT API:
 # driver_number = unique identifier for drivers
 # position = the position they came in that session_key (we want the session_key of the RACE)
 # session_key = unique identifier that is specific to the session itself not just the meeting 
 # meeting_key = this is a chronological unique identifier for this meeting (specific to that individual grand prix but NOT specific to the session (Qual, Sprint, or Race etc.))
 
-# SESSION API:
-# session_key = unique identifier that is specific to the session itself not just the meeting 
-# session_name = specifiy 'Race' in the API call to obtain the session_key of that RACE
 
 # LAPS API:
 # session_key = unique identifier that is specific to the session itself not just the meeting
@@ -53,3 +52,33 @@ print(data)
 # Issue 1 --> How to manipulation html string for API calls for each section
 # The HTML is not too difficult to understand that will be relatively easy
 # Issue 2 --> no where on openF1 does it have complete track distance. I will have to access this else but will be messy?
+
+
+
+
+# Initial script, learning to navigate the API
+# Location/Track name is a USER INPUT
+
+input_variable = 'Singapore Grand Prix'.replace(" ", "%20") # temporary -> URLs dont have spaces, instead either + or %20 --> replace ' ' with '%20'
+base_link = 'https://api.openf1.org/v1/'
+# I am having issues accessing information via inputting the track name.
+current_year = [datetime.now().year][0]
+
+print((base_link + f'meetings?meeting_name={input_variable}'))
+
+# Obtain Meetings information:
+response = urlopen((base_link + f'meetings?meeting_name={input_variable}'))
+# response = urlopen((base_link + f'meetings?meeting_key=latest'))
+
+# response = urlopen('https://api.openf1.org/v1/race_control?flag=BLACK%20AND%20WHITE&driver_number=1&date>=2023-01-01&date<2023-09-01')
+
+data = json.loads(response.read().decode('utf-8'))
+print(data)
+# The data is chronological - [-1] in the list of dicts will be the most recent meeting_key
+
+# obtain the last 2 meeting_keys
+#data = data[-2:]#
+#print(data)
+
+
+# Current issue - API rejecting requests
