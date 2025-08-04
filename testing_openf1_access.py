@@ -111,4 +111,23 @@ print(sessions)
 
 
 # next step is to access the lap times of every lap where they were NOT PITTED at the start
+session_laps = {}
+session_keys = list(sessions.keys())
+for session_key in session_keys:
+    session_laps[session_key] = []
+    for pos in range(0,len(sessions[session_key])): # this should be 3 - as it is the top three positions in the session_results request
+        url_request = base_link + f'laps?session_key={session_key}&driver_number={sessions[session_key][pos]['driver_number']}&is_pit_out_lap=false' # this should be the driver number (accessed from session results data)
+        # the the is pit out lap as false so only the laps on track whole time & the session_key
+        response = urlopen(url_request)
+        data_4 = json.loads(response.read().decode('utf-8'))
+        session_laps[session_key] += data_4
 
+
+print('here are the laps and timings for the top three drivers in the most recent two track meets!\n\n\n\n\n')
+print(session_laps)
+# should extract the necessary information but should be all hear (except the track distance!!)
+
+
+
+
+# Next put in the simplified function (a few mini functions (the data request lines))
