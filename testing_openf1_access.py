@@ -73,12 +73,42 @@ response = urlopen((base_link + f'meetings?meeting_name={input_variable}'))
 # response = urlopen('https://api.openf1.org/v1/race_control?flag=BLACK%20AND%20WHITE&driver_number=1&date>=2023-01-01&date<2023-09-01')
 
 data = json.loads(response.read().decode('utf-8'))
-print(data)
+# print(data)
 # The data is chronological - [-1] in the list of dicts will be the most recent meeting_key
-
+#
+# data = [1,2,3,4,5]
 # obtain the last 2 meeting_keys
-#data = data[-2:]#
-#print(data)
+data = data[-2:] # this will obtain the previous TWO meeting_keys
+print(data)
 
 
-# Current issue - API rejecting requests
+# Current issue - API rejecting requests -- > this happens occassionally, server down?
+data_2 = []
+#next step - sessions
+for meeting in data:
+    session_type = 'Race' # for now putting race, Heppy suggests model for Qual (faster speeds, car tuned for greater power versus race)
+    input_variable = f'{meeting['meeting_key']}'
+    url_request = base_link + f'sessions?meeting_key={input_variable}&session_type={session_type}'
+    response = urlopen(url_request)
+    data_int = json.loads(response.read().decode('utf-8')) # json ,loads puts it into a list anyway so should not do: data_2 += [data_int]
+    data_2 += data_int
+
+print('here is the information on the meetings (older meets first in list)')
+print(data_2)
+
+# next steps - session_results
+sessions = {}
+for session in data_2:
+    # return the top 3 drivers
+    session_key = f'{session['session_key']}'
+    url_request = base_link + f'session_result?session_key={session_key}' + '&position<=3'
+    response = urlopen(url_request)
+    data_3 = json.loads(response.read().decode('utf-8'))
+    sessions[session['session_key']] = data_3
+
+print('here are the top three positions for the two MOST RECENT sessions at this track')
+print(sessions)
+
+
+# next step is to access the lap times of every lap where they were NOT PITTED at the start
+
