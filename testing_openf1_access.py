@@ -59,75 +59,123 @@ import json
 # Initial script, learning to navigate the API
 # Location/Track name is a USER INPUT
 
-input_variable = 'Singapore Grand Prix'.replace(" ", "%20") # temporary -> URLs dont have spaces, instead either + or %20 --> replace ' ' with '%20'
-base_link = 'https://api.openf1.org/v1/'
-# I am having issues accessing information via inputting the track name.
-current_year = [datetime.now().year][0]
 
-print((base_link + f'meetings?meeting_name={input_variable}'))
+def practise():
+    input_variable = 'Singapore Grand Prix'.replace(" ", "%20") # temporary -> URLs dont have spaces, instead either + or %20 --> replace ' ' with '%20'
+    base_link = 'https://api.openf1.org/v1/'
+    # I am having issues accessing information via inputting the track name.
+    current_year = [datetime.now().year][0]
 
-# Obtain Meetings information:
-response = urlopen((base_link + f'meetings?meeting_name={input_variable}'))
-# response = urlopen((base_link + f'meetings?meeting_key=latest'))
+    print((base_link + f'meetings?meeting_name={input_variable}'))
 
-# response = urlopen('https://api.openf1.org/v1/race_control?flag=BLACK%20AND%20WHITE&driver_number=1&date>=2023-01-01&date<2023-09-01')
+    # Obtain Meetings information:
+    response = urlopen((base_link + f'meetings?meeting_name={input_variable}'))
+    # response = urlopen((base_link + f'meetings?meeting_key=latest'))
 
-data = json.loads(response.read().decode('utf-8'))
-# print(data)
-# The data is chronological - [-1] in the list of dicts will be the most recent meeting_key
-#
-# data = [1,2,3,4,5]
-# obtain the last 2 meeting_keys
-data = data[-2:] # this will obtain the previous TWO meeting_keys
-print(data)
+    # response = urlopen('https://api.openf1.org/v1/race_control?flag=BLACK%20AND%20WHITE&driver_number=1&date>=2023-01-01&date<2023-09-01')
 
-
-# Current issue - API rejecting requests -- > this happens occassionally, server down?
-data_2 = []
-#next step - sessions
-for meeting in data:
-    session_type = 'Race' # for now putting race, Heppy suggests model for Qual (faster speeds, car tuned for greater power versus race)
-    input_variable = f'{meeting['meeting_key']}'
-    url_request = base_link + f'sessions?meeting_key={input_variable}&session_type={session_type}'
-    response = urlopen(url_request)
-    data_int = json.loads(response.read().decode('utf-8')) # json ,loads puts it into a list anyway so should not do: data_2 += [data_int]
-    data_2 += data_int
-
-print('here is the information on the meetings (older meets first in list)')
-print(data_2)
-
-# next steps - session_results
-sessions = {}
-for session in data_2:
-    # return the top 3 drivers
-    session_key = f'{session['session_key']}'
-    url_request = base_link + f'session_result?session_key={session_key}' + '&position<=3'
-    response = urlopen(url_request)
-    data_3 = json.loads(response.read().decode('utf-8'))
-    sessions[session['session_key']] = data_3
-
-print('here are the top three positions for the two MOST RECENT sessions at this track')
-print(sessions)
+    data = json.loads(response.read().decode('utf-8'))
+    # print(data)
+    # The data is chronological - [-1] in the list of dicts will be the most recent meeting_key
+    #
+    # data = [1,2,3,4,5]
+    # obtain the last 2 meeting_keys
+    data = data[-2:] # this will obtain the previous TWO meeting_keys
+    print(data)
 
 
-# next step is to access the lap times of every lap where they were NOT PITTED at the start
-session_laps = {}
-session_keys = list(sessions.keys())
-for session_key in session_keys:
-    session_laps[session_key] = []
-    for pos in range(0,len(sessions[session_key])): # this should be 3 - as it is the top three positions in the session_results request
-        url_request = base_link + f'laps?session_key={session_key}&driver_number={sessions[session_key][pos]['driver_number']}&is_pit_out_lap=false' # this should be the driver number (accessed from session results data)
-        # the the is pit out lap as false so only the laps on track whole time & the session_key
+    # Current issue - API rejecting requests -- > this happens occassionally, server down?
+    data_2 = []
+    #next step - sessions
+    for meeting in data:
+        session_type = 'Race' # for now putting race, Heppy suggests model for Qual (faster speeds, car tuned for greater power versus race)
+        input_variable = f'{meeting['meeting_key']}'
+        url_request = base_link + f'sessions?meeting_key={input_variable}&session_type={session_type}'
         response = urlopen(url_request)
-        data_4 = json.loads(response.read().decode('utf-8'))
-        session_laps[session_key] += data_4
+        data_int = json.loads(response.read().decode('utf-8')) # json ,loads puts it into a list anyway so should not do: data_2 += [data_int]
+        data_2 += data_int
+
+    print('here is the information on the meetings (older meets first in list)')
+    print(data_2)
+
+    # next steps - session_results
+    sessions = {}
+    for session in data_2:
+        # return the top 3 drivers
+        session_key = f'{session['session_key']}'
+        url_request = base_link + f'session_result?session_key={session_key}' + '&position<=3'
+        response = urlopen(url_request)
+        data_3 = json.loads(response.read().decode('utf-8'))
+        sessions[session['session_key']] = data_3
+
+    print('here are the top three positions for the two MOST RECENT sessions at this track')
+    print(sessions)
 
 
-print('here are the laps and timings for the top three drivers in the most recent two track meets!\n\n\n\n\n')
-print(session_laps)
-# should extract the necessary information but should be all hear (except the track distance!!)
+    # next step is to access the lap times of every lap where they were NOT PITTED at the start
+    session_laps = {}
+    session_keys = list(sessions.keys())
+    for session_key in session_keys:
+        session_laps[session_key] = []
+        for pos in range(0,len(sessions[session_key])): # this should be 3 - as it is the top three positions in the session_results request
+            url_request = base_link + f'laps?session_key={session_key}&driver_number={sessions[session_key][pos]['driver_number']}&is_pit_out_lap=false' # this should be the driver number (accessed from session results data)
+            # the the is pit out lap as false so only the laps on track whole time & the session_key
+            response = urlopen(url_request)
+            data_4 = json.loads(response.read().decode('utf-8'))
+            session_laps[session_key] += data_4
+
+
+    print('here are the laps and timings for the top three drivers in the most recent two track meets!\n\n\n\n\n')
+    print(session_laps)
+    # should extract the necessary information but should be all hear (except the track distance!!)
+
+
+
+
+
 
 
 
 
 # Next put in the simplified function (a few mini functions (the data request lines))
+def request_and_get_data(url_extension):
+    response = urlopen(('https://api.openf1.org/v1/' + url_extension))
+    data = json.loads(response.read().decode('utf-8'))
+    return data
+
+
+# Obtain Meetings information: INFO REQUIRED FOR REQUEST: meeting name (user input)
+input_variable = 'Singapore Grand Prix'.replace(" ", "%20") # temporary -> URLs dont have spaces, instead either + or %20 --> replace ' ' with '%20'
+data = request_and_get_data(f'meetings?meeting_name={input_variable}')[-2:] # [-2:] as this returns the two most recent track meetings
+
+# Obtain Sessions information: INFO REQUIRED FOR REQUEST: meeting_key (obtained from Meetings request), session_type (as of 05082025 I am using Race for simplicity)
+data_2 = []
+session_type = 'Race'
+for meeting in data:
+    data_2 += request_and_get_data(f'sessions?meeting_key={meeting['meeting_key']}&session_type={session_type}')
+    
+
+# Obtain Session Results: INFO REQUIRED FOR REQUEST: session_key (obtained from Sessions request), top 3 placed (<= 3)
+sessions = {}
+for session in data_2:
+    session_key = f'{session['session_key']}'
+    sessions[session_key] = request_and_get_data(f'session_result?session_key={session_key}&position<=3')
+
+# Obtain Lap information: INFO REQURIED FOR REQUEST: session_key (obtained from Sessions request), driver_number (obtained from the Session Results request), is_pit_out_lap (FALSE, we only want laps with pit interruption)
+session_keys = list(sessions.keys())
+session_laps = {}
+for session_key in session_keys:
+    session_laps[session_key] = {}
+    for pos in range(0,len(sessions[session_key])):
+        session_laps[session_key][sessions[session_key][pos]['driver_number']] = request_and_get_data(f'laps?session_key={session_key}&driver_number={sessions[session_key][pos]['driver_number']}&is_pit_out_lap=false')
+
+
+
+
+
+
+print(data)
+print(data_2)
+print(sessions)
+print(session_laps)
+
