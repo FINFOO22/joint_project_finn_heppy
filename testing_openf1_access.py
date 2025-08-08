@@ -179,3 +179,35 @@ print(data_2)
 print(sessions)
 print(session_laps)
 
+
+
+
+
+
+
+
+
+
+
+
+
+# testing SQLite, a built in python package fro small - medium databases.
+# following a tutorial - https://www.youtube.com/watch?v=pd-0G0MigUA - 08082025
+import sqlite3
+
+conn = sqlite3.connect('aerofoil_optimization.db')
+
+c = conn.cursor()
+
+c.execute("""CREATE TABLE track_info (
+          track_id integer,
+          length real,
+          mean_speed integer,
+          mean_speed_s1 integer,
+          mean_speed_s2 integer,
+          mean_speed_s3 integer,
+          UB_speed integer,
+          LB_speed integer
+          )""")
+
+
