@@ -5,7 +5,7 @@
 from datetime import datetime
 from urllib.request import urlopen
 import json
-
+from math import sqrt
 #response = urlopen('https://api.openf1.org/v1/session_result?session_key=latest')
 #data = json.loads(response.read().decode('utf-8'))
 #print(data)
@@ -174,16 +174,44 @@ for session_key in session_keys:
 
 
 
-print(data)
-print(data_2)
-print(sessions)
-print(session_laps)
+#print(data)
+#print(data_2)
+#print(sessions)
+#print(session_laps) # session laps is a: dict (key is session_key) and value is a dict with key as driver_number and value is a list every lap that is an OUT OF PIT LAP (every lap is a dict)
+#quit()
+
+
+# creating function based on the testing_track_calculation.py script : 12082025
+def calc_track_distance(all_location_points):
+    total_distance_travelled = 0
+    for i in range(0, (len(all_location_points)-1), 1): # so we dont loop to last point, as this will have no next position which we calculate distance travelled from
+        pos_1 = (all_location_points[i]['x'], all_location_points[i]['y'], all_location_points[i]['z'])
+
+        pos_2 = (all_location_points[i+1]['x'], all_location_points[i+1]['y'], all_location_points[i+1]['z'])
+
+        # calculate distance travelled
+        travelled_distance = sqrt((pos_1[0]-pos_2[0])**2 + (pos_1[1]-pos_2[1])**2 + (pos_1[2]-pos_2[2])**2)
+        total_distance_travelled += travelled_distance
+    return total_distance_travelled
+
+
+# now calculating overall distance of track for every lap of the top three drivers
+for session_key, driver in session_laps.items():
+    for driver_number, laps in driver.items():
+        for i in range(0, len(laps)-1, 1):
+            if laps[i]['lap_number'] != (laps[i+1]['lap_number'] - 1): # as it should be lap compared to the very next lap after
+                # (but could be removed if that lap was a pit lap therefore we will have to exclude measuring that one) 
+                continue
+            else:
+                exact_start_time = laps[i]['date_start'] # this is a string thatll need to be broken down to work out where sectors end and start within laps to calc their exact distance --> and subsequently the speeds
+                all_location_points = request_and_get_data(f"location?session_key={session_key}&driver_number={driver_number}&date>={laps[i]['date_start']}&date<={laps[i+1]['date_start']}")
+                distance_travelled = calc_track_distance(all_location_points=all_location_points)
+
+                print(f"Driver: {driver_number}\nLap: {laps[i]['lap_number']}\nTravelled: {distance_travelled}")
 
 
 
-
-
-
+quit()
 
 
 
