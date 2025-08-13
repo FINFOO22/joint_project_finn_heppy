@@ -3,9 +3,11 @@
 # 01082025 - testing OpenF1 API
 # So here this project requires access to the speeds, obtaining the average from the ##top three speeds## (p1, p2, p3) of the track from the ##past two years##
 from datetime import datetime
+import urllib
 from urllib.request import urlopen
 import json
 from math import sqrt
+from time import sleep
 #response = urlopen('https://api.openf1.org/v1/session_result?session_key=latest')
 #data = json.loads(response.read().decode('utf-8'))
 #print(data)
@@ -203,11 +205,30 @@ for session_key, driver in session_laps.items():
                 # (but could be removed if that lap was a pit lap therefore we will have to exclude measuring that one) 
                 continue
             else:
-                exact_start_time = laps[i]['date_start'] # this is a string thatll need to be broken down to work out where sectors end and start within laps to calc their exact distance --> and subsequently the speeds
-                all_location_points = request_and_get_data(f"location?session_key={session_key}&driver_number={driver_number}&date>={laps[i]['date_start']}&date<={laps[i+1]['date_start']}")
-                distance_travelled = calc_track_distance(all_location_points=all_location_points)
+                try:
+                    exact_start_time = laps[i]['date_start'] # this is a string thatll need to be broken down to work out where sectors end and start within laps to calc their exact distance --> and subsequently the speeds
+                    all_location_points = request_and_get_data(f"location?session_key={session_key}&driver_number={driver_number}&date>={laps[i]['date_start']}&date<={laps[i+1]['date_start']}")
+                    distance_travelled = calc_track_distance(all_location_points=all_location_points)
 
-                print(f"Driver: {driver_number}\nLap: {laps[i]['lap_number']}\nTravelled: {distance_travelled}")
+                    print(f"Driver: {driver_number}\nLap: {laps[i]['lap_number']}\nTravelled: {distance_travelled}")
+                except urllib.error.HTTPError:
+                    time = 0.2
+                    while True:
+                        if time > 4: # arbitrary time
+                            print(f'Request time rest is: {time} seconds')
+                        sleep(time)  
+                        try:
+                            exact_start_time = laps[i]['date_start'] # this is a string thatll need to be broken down to work out where sectors end and start within laps to calc their exact distance --> and subsequently the speeds
+                            all_location_points = request_and_get_data(f"location?session_key={session_key}&driver_number={driver_number}&date>={laps[i]['date_start']}&date<={laps[i+1]['date_start']}")
+                            distance_travelled = calc_track_distance(all_location_points=all_location_points)
+
+                            print(f"Driver: {driver_number}\nLap: {laps[i]['lap_number']}\nTravelled: {distance_travelled}")
+                            break
+                        except urllib.error.HTTPError:
+                            time = time*2
+
+
+
 
 
 
