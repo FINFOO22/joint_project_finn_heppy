@@ -251,24 +251,35 @@ for session_key, driver in session_laps.items():
                                 try:
                                     sector_distance_travelled = sector_distance_travelled + t2_dist
                                 except:
+                                    print('Here')
                                     pass
 
-
+                                
                                 t1 = datetime_conversion(all_location_points[index-1]['date'])[1]
+                                
                                 t2 = datetime_conversion(all_location_points[index]['date'])[1]
+                                print(f't1: {t1} | t2: {t2}')
+
                                 t1t2_dist_travelled = calc_track_distance(all_location_points=all_location_points[index-1:index+1])
+                                print(f'distance travelled between these time points: {t1t2_dist_travelled}')
+
                                 time_gap = t2 - t1
+                                print(f'time gap between these: {time_gap}')
+
                                 gap = datetime_conversion(all_location_points[index-1]['date'])[1]
-                                gap = sectors[sector_index] - gap
+                                gap = sectors_time_points[sector_index] - gap
+                                print(f'time on sector {sector_index+1}: {sectors[sector_index]} | gap between last time point in sector {sector_index+1} and actual sector completion time: {gap}')
 
                                 t1_dist = (t1t2_dist_travelled)*(gap/time_gap)
                                 t2_dist = (t1t2_dist_travelled)*((time_gap-gap)/time_gap)
+                                print(f't1_dist: {t1_dist} | t2_dist: {t2_dist}')
 
                                 sector_distance_travelled = sector_distance_travelled + t1_dist
+                                print(f'sector_distance_travelled: {sector_distance_travelled}')
                                 # update the dictionary
                                 try:# access the dictionary
                                     times_distances = sectors_split[(sector_index+1)]
-                                    times_distances[0] = times_distances[0] + [sectors_time_points[sector_index]]
+                                    times_distances[0] = times_distances[0] + [sectors[sector_index]]
                                     times_distances[1] = times_distances[1] + [sector_distance_travelled]
                                     
                                     sectors_split[(sector_index+1)] = times_distances
@@ -276,12 +287,12 @@ for session_key, driver in session_laps.items():
                                     
                                     index_to_start_from = index
                                 except:
-                                    sectors_split[(sector_index+1)] = [[sectors_time_points[sector_index]],[sector_distance_travelled]]
+                                    sectors_split[(sector_index+1)] = [[sectors[sector_index]],[sector_distance_travelled]]
                                     dist_travelled += sector_distance_travelled
 
 
                                     index_to_start_from = index
-                                break
+                                break # to end this loop as we found the cutoff of sector n -> sector n+1
                     
                     # now add the total distance and total time taken for that lap AND the final sector
                     complete_distance_travelled = calc_track_distance(all_location_points=all_location_points)
@@ -290,13 +301,13 @@ for session_key, driver in session_laps.items():
                     # now add sector 3 
                     try:
                         times_distances = sectors_split[3]
-                        times_distances[1] = times_distances[1] + [(complete_distance_travelled-dist_travelled)]
-                        times_distances[0] = times_distances[0] + [laps[i]['duration_sector_3']]
+                        times_distances[0] = times_distances[0] + [(complete_distance_travelled-dist_travelled)]
+                        times_distances[1] = times_distances[1] + [laps[i]['duration_sector_3']]
                         sectors_split[3] = times_distances
 
                         times_distances = sectors_split['complete']
-                        times_distances[1] = times_distances[1] + [complete_distance_travelled]
-                        times_distances[0] = times_distances[0] + [laps[i]['lap_duration']]
+                        times_distances[0] = times_distances[0] + [complete_distance_travelled]
+                        times_distances[1] = times_distances[1] + [laps[i]['lap_duration']]
                         sectors_split['complete'] = times_distances
                     except:
                         sectors_split[3] = [[laps[i]['duration_sector_3']],[(complete_distance_travelled-dist_travelled)]]
@@ -305,6 +316,8 @@ for session_key, driver in session_laps.items():
 
                     print(f"Driver: {driver_number}\nLap: {laps[i]['lap_number']}\nTravelled: {complete_distance_travelled}")
                     print(sectors_split)
+
+                    quit()
                 except urllib.error.HTTPError:
                     time = 0.2
                     while True:
