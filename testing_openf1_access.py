@@ -11,7 +11,7 @@ from time import sleep
 #response = urlopen('https://api.openf1.org/v1/session_result?session_key=latest')
 #data = json.loads(response.read().decode('utf-8'))
 #print(data)
-
+from converting_timestamp_into_numerical import *
 
 
 
@@ -198,19 +198,113 @@ def calc_track_distance(all_location_points):
 
 
 # now calculating overall distance of track for every lap of the top three drivers
+sectors_split = {}
+# theoretical dictionary layout for sectors_split:
+{1: [['every sec 1 time'], ['every sec 1 distance']],
+     2:[['same but for sec 2']],
+     3:[['same but for sec 3']],
+     'complete': [['same but for whole track']]
+     }
+
+
+#print(session_laps) # 
 for session_key, driver in session_laps.items():
     for driver_number, laps in driver.items():
+        #print(driver_number)
+        #print(laps)
         for i in range(0, len(laps)-1, 1):
+            if laps[i]['date_start'] is None:
+                continue # SOME OF THE LAPS HAVE INCOMPLETE INFoRMATION - I DONT KNOW WHY
+
             if laps[i]['lap_number'] != (laps[i+1]['lap_number'] - 1): # as it should be lap compared to the very next lap after
                 # (but could be removed if that lap was a pit lap therefore we will have to exclude measuring that one) 
                 continue
             else:
                 try:
+                    
                     exact_start_time = laps[i]['date_start'] # this is a string thatll need to be broken down to work out where sectors end and start within laps to calc their exact distance --> and subsequently the speeds
-                    all_location_points = request_and_get_data(f"location?session_key={session_key}&driver_number={driver_number}&date>={laps[i]['date_start']}&date<={laps[i+1]['date_start']}")
-                    distance_travelled = calc_track_distance(all_location_points=all_location_points)
+                    print(exact_start_time)
+                    date, start_time = datetime_conversion(exact_start_time)
+                    time_sect_1 = start_time + laps[i]['duration_sector_1']
+                    time_sect_2 = time_sect_1 + laps[i]['duration_sector_2']
+                    final_time = datetime_conversion(laps[i+1]['date_start'])
+                    # now that we have requested all the lap I can do a binary search for all the coord splits
+                    # then calculate distances HOWEVER , sector finishing times are not inline with the coordinate recording timepoints, so how do I make an accurate guess to the track distance
+                    # if I cannot get the exact location of the car when they complete sector x?
+                    
+                    # This is NEXT STEP
+                    
 
-                    print(f"Driver: {driver_number}\nLap: {laps[i]['lap_number']}\nTravelled: {distance_travelled}")
+                    
+                    all_location_points = request_and_get_data(f"location?session_key={session_key}&driver_number={driver_number}&date>={laps[i]['date_start']}&date<={laps[i+1]['date_start']}")
+                    sectors = [laps[i]['duration_sector_1'], laps[i]['duration_sector_2']]
+                    sectors_time_points = [time_sect_1, time_sect_2]
+                    # 24082025
+                    # calculating for sector 1
+                    index_to_start_from = 0
+                    # sectors_split = {}
+                    dist_travelled = 0
+                    for sector_index in range(0, len(sectors)): # this is a SLOW way to search, might need to change it in the future CAN work out final sector by subtracting these from the complete distance
+                        for index in range(index_to_start_from, len(all_location_points)):
+                            if datetime_conversion(all_location_points[index]['date'])[1] > sectors_time_points[sector_index]: # this means it has gone past the sector (the index before is the correct one)
+                                sector_distance_travelled = calc_track_distance(all_location_points=all_location_points[index_to_start_from:index]) # will return everything except current index on
+                                try:
+                                    sector_distance_travelled = sector_distance_travelled + t2_dist
+                                except:
+                                    pass
+
+
+                                t1 = datetime_conversion(all_location_points[index-1]['date'])[1]
+                                t2 = datetime_conversion(all_location_points[index]['date'])[1]
+                                t1t2_dist_travelled = calc_track_distance(all_location_points=all_location_points[index-1:index+1])
+                                time_gap = t2 - t1
+                                gap = datetime_conversion(all_location_points[index-1]['date'])[1]
+                                gap = sectors[sector_index] - gap
+
+                                t1_dist = (t1t2_dist_travelled)*(gap/time_gap)
+                                t2_dist = (t1t2_dist_travelled)*((time_gap-gap)/time_gap)
+
+                                sector_distance_travelled = sector_distance_travelled + t1_dist
+                                # update the dictionary
+                                try:# access the dictionary
+                                    times_distances = sectors_split[(sector_index+1)]
+                                    times_distances[0] = times_distances[0] + [sectors_time_points[sector_index]]
+                                    times_distances[1] = times_distances[1] + [sector_distance_travelled]
+                                    
+                                    sectors_split[(sector_index+1)] = times_distances
+                                    dist_travelled += sector_distance_travelled
+                                    
+                                    index_to_start_from = index
+                                except:
+                                    sectors_split[(sector_index+1)] = [[sectors_time_points[sector_index]],[sector_distance_travelled]]
+                                    dist_travelled += sector_distance_travelled
+
+
+                                    index_to_start_from = index
+                                break
+                    
+                    # now add the total distance and total time taken for that lap AND the final sector
+                    complete_distance_travelled = calc_track_distance(all_location_points=all_location_points)
+
+                    
+                    # now add sector 3 
+                    try:
+                        times_distances = sectors_split[3]
+                        times_distances[1] = times_distances[1] + [(complete_distance_travelled-dist_travelled)]
+                        times_distances[0] = times_distances[0] + [laps[i]['duration_sector_3']]
+                        sectors_split[3] = times_distances
+
+                        times_distances = sectors_split['complete']
+                        times_distances[1] = times_distances[1] + [complete_distance_travelled]
+                        times_distances[0] = times_distances[0] + [laps[i]['lap_duration']]
+                        sectors_split['complete'] = times_distances
+                    except:
+                        sectors_split[3] = [[laps[i]['duration_sector_3']],[(complete_distance_travelled-dist_travelled)]]
+                        sectors_split['complete'] = [[laps[i]['lap_duration']],[complete_distance_travelled]]
+
+
+                    print(f"Driver: {driver_number}\nLap: {laps[i]['lap_number']}\nTravelled: {complete_distance_travelled}")
+                    print(sectors_split)
                 except urllib.error.HTTPError:
                     time = 0.2
                     while True:
@@ -233,6 +327,18 @@ for session_key, driver in session_laps.items():
 
 
 quit()
+# calculated the distance --> what now?
+# Step one:
+# use the converting timestamp function to get exact times,
+# Get the time in seconds when the lap starts, and work out the time at which each sector ends AND starts
+# from here can work out the distances of each sector and the subsequent speed 
+
+
+# HOW?
+# datetime_conversion(datetime_string: str) the start of lap
+# add the sector time to it --> reconvert that to the datetime format string --> MAKE a request for the individual sectors (every location within that timeframe)
+# calculate distances travelled for each 
+# average them and record --> pipe all the necessary information into the script that writes the sql table.
 
 
 
@@ -250,7 +356,7 @@ c = conn.cursor()
 
 c.execute("""CREATE TABLE track_info (
           track_id integer,
-          length real,
+          rl_length real,
           mean_speed integer,
           mean_speed_s1 integer,
           mean_speed_s2 integer,
