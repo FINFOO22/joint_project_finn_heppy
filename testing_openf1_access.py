@@ -141,25 +141,37 @@ def practise():
 
 # Next put in the simplified function (a few mini functions (the data request lines))
 def request_and_get_data(url_extension):
-    response = urlopen(('https://api.openf1.org/v1/' + url_extension))
+    time = 0.0
+    while True:
+        try:
+            sleep(time)
+            response = urlopen(('https://api.openf1.org/v1/' + url_extension))
+            break
+        except urllib.error.HTTPError:
+            time = (time+0.01)*2
     data = json.loads(response.read().decode('utf-8'))
     return data
 
 
 # Obtain Meetings information: INFO REQUIRED FOR REQUEST: meeting name (user input)
+
 input_variable = 'Singapore Grand Prix'.replace(" ", "%20") # temporary -> URLs dont have spaces, instead either + or %20 --> replace ' ' with '%20'
+print(f'Obtaining the most recent meetings from {input_variable}')
 data = request_and_get_data(f'meetings?meeting_name={input_variable}')[-2:] # [-2:] as this returns the two most recent track meetings
 
 # Obtain Sessions information: INFO REQUIRED FOR REQUEST: meeting_key (obtained from Meetings request), session_type (as of 05082025 I am using Race for simplicity)
 data_2 = []
 session_type = 'Race'
 for meeting in data:
+    track_id = int(meeting['circuit_key'])
     data_2 += request_and_get_data(f'sessions?meeting_key={meeting['meeting_key']}&session_type={session_type}')
     
 
 # Obtain Session Results: INFO REQUIRED FOR REQUEST: session_key (obtained from Sessions request), top 3 placed (<= 3)
 sessions = {}
+
 for session in data_2:
+
     session_key = f'{session['session_key']}'
     sessions[session_key] = request_and_get_data(f'session_result?session_key={session_key}&position<=3')
 
@@ -208,8 +220,12 @@ sectors_split = {}
 
 
 #print(session_laps) # 
+st_speeds = [] # to store all the st_speeds 
+
 for session_key, driver in session_laps.items():
+    print(f'Collating the data for session key: {session_key}')
     for driver_number, laps in driver.items():
+        print(f'\t# Collating data from driver: {driver_number}')
         #print(driver_number)
         #print(laps)
         for i in range(0, len(laps)-1, 1):
@@ -223,10 +239,13 @@ for session_key, driver in session_laps.items():
                 try:
                     
                     exact_start_time = laps[i]['date_start'] # this is a string thatll need to be broken down to work out where sectors end and start within laps to calc their exact distance --> and subsequently the speeds
-                    print(exact_start_time)
+                    #print(exact_start_time)
                     date, start_time = datetime_conversion(exact_start_time)
-                    time_sect_1 = start_time + laps[i]['duration_sector_1']
-                    time_sect_2 = time_sect_1 + laps[i]['duration_sector_2']
+                    try:
+                        time_sect_1 = start_time + laps[i]['duration_sector_1']
+                        time_sect_2 = time_sect_1 + laps[i]['duration_sector_2']
+                    except TypeError: # some laps have no values on their sector times
+                        continue
                     final_time = datetime_conversion(laps[i+1]['date_start'])
                     # now that we have requested all the lap I can do a binary search for all the coord splits
                     # then calculate distances HOWEVER , sector finishing times are not inline with the coordinate recording timepoints, so how do I make an accurate guess to the track distance
@@ -251,31 +270,31 @@ for session_key, driver in session_laps.items():
                                 try:
                                     sector_distance_travelled = sector_distance_travelled + t2_dist
                                 except:
-                                    print('Here')
+                                    #print('Here')
                                     pass
 
                                 
                                 t1 = datetime_conversion(all_location_points[index-1]['date'])[1]
                                 
                                 t2 = datetime_conversion(all_location_points[index]['date'])[1]
-                                print(f't1: {t1} | t2: {t2}')
+                                #print(f't1: {t1} | t2: {t2}')
 
                                 t1t2_dist_travelled = calc_track_distance(all_location_points=all_location_points[index-1:index+1])
-                                print(f'distance travelled between these time points: {t1t2_dist_travelled}')
+                                #print(f'distance travelled between these time points: {t1t2_dist_travelled}')
 
                                 time_gap = t2 - t1
-                                print(f'time gap between these: {time_gap}')
+                                #print(f'time gap between these: {time_gap}')
 
                                 gap = datetime_conversion(all_location_points[index-1]['date'])[1]
                                 gap = sectors_time_points[sector_index] - gap
-                                print(f'time on sector {sector_index+1}: {sectors[sector_index]} | gap between last time point in sector {sector_index+1} and actual sector completion time: {gap}')
+                                #print(f'time on sector {sector_index+1}: {sectors[sector_index]} | gap between last time point in sector {sector_index+1} and actual sector completion time: {gap}')
 
                                 t1_dist = (t1t2_dist_travelled)*(gap/time_gap)
                                 t2_dist = (t1t2_dist_travelled)*((time_gap-gap)/time_gap)
-                                print(f't1_dist: {t1_dist} | t2_dist: {t2_dist}')
+                                #print(f't1_dist: {t1_dist} | t2_dist: {t2_dist}')
 
                                 sector_distance_travelled = sector_distance_travelled + t1_dist
-                                print(f'sector_distance_travelled: {sector_distance_travelled}')
+                                #print(f'sector_distance_travelled: {sector_distance_travelled}')
                                 # update the dictionary
                                 try:# access the dictionary
                                     times_distances = sectors_split[(sector_index+1)]
@@ -301,23 +320,23 @@ for session_key, driver in session_laps.items():
                     # now add sector 3 
                     try:
                         times_distances = sectors_split[3]
-                        times_distances[0] = times_distances[0] + [(complete_distance_travelled-dist_travelled)]
-                        times_distances[1] = times_distances[1] + [laps[i]['duration_sector_3']]
+                        times_distances[1] = times_distances[1] + [(complete_distance_travelled-dist_travelled)]
+                        times_distances[0] = times_distances[0] + [laps[i]['duration_sector_3']]
                         sectors_split[3] = times_distances
 
                         times_distances = sectors_split['complete']
-                        times_distances[0] = times_distances[0] + [complete_distance_travelled]
-                        times_distances[1] = times_distances[1] + [laps[i]['lap_duration']]
+                        times_distances[1] = times_distances[1] + [complete_distance_travelled]
+                        times_distances[0] = times_distances[0] + [laps[i]['lap_duration']]
                         sectors_split['complete'] = times_distances
                     except:
                         sectors_split[3] = [[laps[i]['duration_sector_3']],[(complete_distance_travelled-dist_travelled)]]
                         sectors_split['complete'] = [[laps[i]['lap_duration']],[complete_distance_travelled]]
 
 
-                    print(f"Driver: {driver_number}\nLap: {laps[i]['lap_number']}\nTravelled: {complete_distance_travelled}")
-                    print(sectors_split)
-
-                    quit()
+                    #print(f"Driver: {driver_number}\nLap: {laps[i]['lap_number']}\nTravelled: {complete_distance_travelled}")
+                    #print(sectors_split)
+                    #quit()
+                    
                 except urllib.error.HTTPError:
                     time = 0.2
                     while True:
@@ -333,6 +352,28 @@ for session_key, driver in session_laps.items():
                             break
                         except urllib.error.HTTPError:
                             time = time*2
+
+            try:
+                st_speeds += [int(laps[i]['st_speed'])] # to retain the st_speed info # THEY HAVENT ALWAYS REFCORDED THE SPEEDS
+            except:
+                pass
+# 24082025
+# Next steps: apply the try except clause for requests for the whole script  -done
+# allow script to run for every lap - done
+# start writing the function that inputs this into SQL format
+
+
+
+
+# 25082025
+from testing_sqlite_functionality import *
+
+update_database(track_id=track_id, speed_data=sectors_split, session_keys=session_keys, st_speeds=st_speeds)
+
+
+
+
+
 
 
 

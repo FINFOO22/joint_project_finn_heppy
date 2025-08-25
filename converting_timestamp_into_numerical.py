@@ -3,7 +3,7 @@
 
 
 # here is the openf1 datetime string
-datetime = "2023-09-16T13:03:35.292000+00:00"
+# datetime = "2023-09-16T13:03:35.292000+00:00"
 
 def datetime_conversion(datetime_string: str):
     # "string".split
